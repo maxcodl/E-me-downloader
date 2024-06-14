@@ -24,6 +24,6 @@ The files will be saved in a folder named "downloads" and within that, a folder 
 
 
 # Update
-* Updated the script and made it a little bit faster
+* Faster downloads
 * Added progressbar for downloads
 * Updated Requirements
