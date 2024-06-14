@@ -23,7 +23,7 @@ Provide the URL of the album you wish to download as the argument **[url]**.
 The files will be saved in a folder named "downloads" and within that, a folder with the album name will be created and all files from that album will be saved there.
 
 
-## Update
-# Updated the script and made it a little bit faster
-# Added progressbar for downloads
-# Updated Requirements
+# Update
+* Updated the script and made it a little bit faster
+* Added progressbar for downloads
+* Updated Requirements
