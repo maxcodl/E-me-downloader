@@ -1,4 +1,4 @@
-# EromeDownloader
+# E-meDownloaer
 
 The EromeDownloader script is a compact yet powerful tool written in Python, designed to download albums from erome.com, including videos, images, and gifs.
 
