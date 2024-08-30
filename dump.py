@@ -9,10 +9,12 @@ from tqdm import tqdm
 
 session = requests.Session()
 
+ALLOWED_HOSTS = ["www.erome.com", "nl.erome.com", "erome.fan"]
+
 def collect_links(album_url):
     parsed_url = urlparse(album_url)
-    if parsed_url.hostname != "www.erome.com":
-        raise Exception(f"Host must be www.erome.com")
+    if parsed_url.hostname not in ALLOWED_HOSTS:
+        raise Exception(f"Host must be one of the following: {', '.join(ALLOWED_HOSTS)}")
 
     r = session.get(album_url, headers={"User-Agent": "Mozilla/5.0"})
     if r.status_code != 200:
