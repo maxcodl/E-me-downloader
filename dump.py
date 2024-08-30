@@ -31,7 +31,7 @@ def collect_links(album_url):
     # Debug print statements to verify URLs
     print("Found URLs:")
     for url in videos + images:
-        print(url)
+      #  print(url)
 
     urls = list(set(videos + images))
     download_path = get_final_path(title)
