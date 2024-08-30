@@ -7,6 +7,7 @@ import os
 import tldextract
 from tqdm import tqdm
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 session = requests.Session()
 
@@ -24,21 +25,24 @@ def collect_links(album_url):
     soup = BeautifulSoup(r.content, "html.parser")
     title = soup.find("meta", property="og:title")["content"]
 
-    # Extract video and image URLs
+    # Extract video and image URLs using various attributes
     videos = [urljoin(album_url, video_source["src"]) for video_source in soup.find_all("source")]
-    images = [urljoin(album_url, image["data-src"]) for image in soup.find_all("img") if "data-src" in image.attrs]
+    images = []
+    for img in soup.find_all("img"):
+        for attr in ["src", "data-src", "data-original", "data-lazy"]:
+            if attr in img.attrs:
+                images.append(urljoin(album_url, img[attr]))
 
-    # Debug print statements to verify URLs
-    print("Found URLs:")
-    for url in videos + images:
-        print(url)
-
+    # Remove duplicates
     urls = list(set(videos + images))
     download_path = get_final_path(title)
     existing_files = get_files_in_dir(download_path)
 
-    for file_url in urls:
-        download(file_url, download_path, album_url, existing_files)
+    # Download files using multithreading
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(download, file_url, download_path, album_url, existing_files) for file_url in urls]
+        for future in tqdm(futures, desc="Downloading files", ncols=100):
+            future.result()  # Wait for all downloads to complete
 
 def get_final_path(title):
     final_path = os.path.join("downloads", safe_file_name(title))
@@ -57,10 +61,8 @@ def safe_file_name(name):
 def is_data_url(url):
     return url.startswith('data:')
 
-def download(url, download_path, album=None, existing_files=[], verbose=False):
+def download(url, download_path, album=None, existing_files=[]):
     if is_data_url(url):
-        if verbose:
-            print(f'[ERROR] Skipping data URL: "{url}"')
         return
     
     parsed_url = urlparse(url)
@@ -69,7 +71,6 @@ def download(url, download_path, album=None, existing_files=[], verbose=False):
         print(f'[#] Skipping "{url}" [already downloaded]')
         return
 
-    print(f'[+] Downloading "{url}"')
     extracted = tldextract.extract(url)
     hostname = "{}.{}".format(extracted.domain, extracted.suffix)
     
@@ -85,9 +86,14 @@ def download(url, download_path, album=None, existing_files=[], verbose=False):
         ) as r:
             r.raise_for_status()
             if 'content-type' in r.headers and not r.headers['content-type'].startswith(('image/', 'video/')):
-                print(f'[ERROR] Unsupported content type: {r.headers["content-type"]} for URL: "{url}"')
                 return
+            
+            # Check the content length header if available
             total_size = int(r.headers.get('content-length', 0))
+            if total_size > 0 and total_size < 50 * 1024:  # Less than 50 KB
+                return
+
+            # Download the file
             with open(os.path.join(download_path, file_name), "wb") as f, tqdm(
                 total=total_size, unit='B', unit_scale=True, desc=file_name, ncols=100, file=sys.stdout, leave=True
             ) as pbar:
@@ -101,6 +107,5 @@ def download(url, download_path, album=None, existing_files=[], verbose=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Download media from erome.com albums.")
     parser.add_argument("-u", help="URL of the album to download", type=str, required=True)
-    parser.add_argument("-v", "--verbose", help="Increase output verbosity", action="store_true")
     args = parser.parse_args()
     collect_links(args.u)
